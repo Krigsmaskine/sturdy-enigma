@@ -1,0 +1,167 @@
+{
+  "name": "Prismatic Dragon Staff",
+  "type": "weapon",
+  "img": "icons/weapons/staves/staff-ornate-teal.webp",
+  "system": {
+    "description": {
+      "value": "",
+      "chat": "",
+      "unidentified": ""
+    },
+    "source": "",
+    "quantity": 1,
+    "weight": 0,
+    "price": {
+      "value": 0,
+      "denomination": "gp"
+    },
+    "attunement": 0,
+    "equipped": true,
+    "rarity": "",
+    "identified": true,
+    "activation": {
+      "type": "action",
+      "cost": 1,
+      "condition": ""
+    },
+    "duration": {
+      "value": "",
+      "units": "inst"
+    },
+    "target": {
+      "value": null,
+      "width": null,
+      "units": "",
+      "type": ""
+    },
+    "range": {
+      "value": null,
+      "long": null,
+      "units": "self"
+    },
+    "uses": {
+      "value": null,
+      "max": "",
+      "per": "",
+      "recovery": ""
+    },
+    "consume": {
+      "type": "",
+      "target": "",
+      "amount": null
+    },
+    "ability": "",
+    "actionType": "other",
+    "attackBonus": "",
+    "chatFlavor": "",
+    "critical": {
+      "threshold": null,
+      "damage": ""
+    },
+    "damage": {
+      "parts": [],
+      "versatile": ""
+    },
+    "formula": "",
+    "save": {
+      "ability": "",
+      "dc": null,
+      "scaling": "spell"
+    },
+    "armor": {
+      "value": null
+    },
+    "hp": {
+      "value": null,
+      "max": null,
+      "dt": null,
+      "conditions": ""
+    },
+    "weaponType": "simpleM",
+    "baseItem": "",
+    "properties": {
+      "ada": false,
+      "amm": false,
+      "fin": false,
+      "fir": false,
+      "foc": false,
+      "hvy": false,
+      "lgt": false,
+      "lod": false,
+      "mgc": false,
+      "rch": false,
+      "rel": false,
+      "ret": false,
+      "sil": false,
+      "spc": false,
+      "thr": false,
+      "two": false,
+      "ver": false
+    },
+    "proficient": true
+  },
+  "effects": [],
+  "flags": {
+    "midi-qol": {
+      "effectActivation": false,
+      "onUseMacroName": "[postActiveEffects]ItemMacro"
+    },
+    "midiProperties": {
+      "nodam": false,
+      "fulldam": false,
+      "halfdam": false,
+      "autoFailFriendly": false,
+      "autoSaveFriendly": false,
+      "rollOther": false,
+      "critOther": false,
+      "offHandWeapon": false,
+      "magicdam": false,
+      "magiceffect": false,
+      "concentration": false,
+      "toggleEffect": false,
+      "ignoreTotalCover": false
+    },
+    "core": {
+      "sourceId": "Item.2tbc8TLP0ZDXKW40"
+    },
+    "itemacro": {
+      "macro": {
+        "name": "Prismatic Dragon Staff",
+        "type": "script",
+        "scope": "global",
+        "command": "// Pop up a dialog to figure out if we're using Alpha Strike or shotgunBreath as I have dubbed it in code\nlet shotgunBreath = await Dialog.confirm({\n    title: 'Prismatic Dragon Staff',\n    content: `<p>Unleash the staff's true power?</p>`,\n});\n\n// I stole this function from the internet to capitalize the first letter of damage types. It looked better.\n// https://stackoverflow.com/questions/1026069/how-do-i-make-the-first-letter-of-a-string-uppercase-in-javascript\nfunction capitalizeFirstLetter(string) {\n    return string.charAt(0).toUpperCase() + string.slice(1);\n}\n\n// Define the options  in an array that we can roll. Each pair of {} is the options we're defining that belong together.\nconst breathOptions = [\n    {\"type\": \"cold\", \"throw\": \"dex\", \"saveDC\": 15},\n    {\"type\": \"fire\", \"throw\": \"dex\", \"saveDC\": 20},\n    {\"type\": \"acid\", \"throw\": \"dex\", \"saveDC\": 15},\n    {\"type\": \"poison\", \"throw\": \"con\", \"saveDC\": 15},\n    {\"type\": \"lightning\", \"throw\": \"dex\", \"saveDC\": 15}\n    ];\n\n// Roll a dice for a number between 1 to 5 to pick one.\nlet breathRoll = await new Roll(\"1d5\").evaluate({async: true});\nconst msg = await breathRoll.toMessage();\n\n// Checks if Dice So Nice is installed to display an animation.\nawait game.dice3d?.waitFor3DAnimationByMessageID(msg.id)\n\n// Behind the scenes, we are reducing the result by 1, because the array above is 0-index, e.g. it starts counting from 0. A 5 element array is from 0 - 4.\nbreathRoll = breathRoll.total - 1;\n\n// Define all the options we've rolled our way to for clarity.\nconst breathDamage = breathOptions[breathRoll].type;\nconst breathThrow = breathOptions[breathRoll].throw;\nconst breathDC = breathOptions[breathRoll].saveDC;\n\n// User did not opt for shotgun; clone the original item and update the item's workflow with the right properties from our rolled option above.\nif (!shotgunBreath){\n    const originalItem = await fromUuid(args[0].itemUuid);\n    const clonedItem = originalItem.clone({\n    \"name\": `Prismatic ${capitalizeFirstLetter(breathDamage)} Breath`,\n    \"flags.midi-qol.onUseMacroName\": \"\",\n    \"flags.midi-qol.onUseMacroParts\": [],\n    \"system.target.type\": \"cone\", \n    \"system.target.units\": \"ft\", \n    \"system.target.value\": 30, \n    \"system.damage.parts\": [[\"4d6\",`${breathDamage}`]],\n    \"system.save.ability\": breathThrow,\n    \"system.save.dc\": breathDC,\n    \"system.save.scaling\": \"flat\"\n    });\n    await MidiQOL.completeItemUse(clonedItem);   \n}\nelse {\n    \n    // Defining an array with ALL the damage types together.\n    let damageArray = [];\n    \n    for (let i of breathOptions){\n        damageArray.push([\"4d6\",`${i.type}`]);\n    }\n    \n    const originalItem = await fromUuid(args[0].itemUuid);\n    const clonedItem = originalItem.clone({\n    \"name\": \"Alpha Strike\",\n    \"flags.midi-qol.onUseMacroName\": \"\",\n    \"flags.midi-qol.onUseMacroParts\": [],\n    \"system.target.type\": \"cone\", \n    \"system.target.units\": \"ft\", \n    \"system.target.value\": 30, \n    \"system.damage.parts\": damageArray,\n    \"system.save.ability\": \"dex\",\n    \"system.save.dc\": 20,\n    \"system.save.scaling\": \"flat\"\n    });\n    await MidiQOL.completeItemUse(clonedItem);\n}",
+        "author": "Gu1ieuDSuMNnDIjI",
+        "_id": null,
+        "img": "icons/svg/dice-target.svg",
+        "folder": null,
+        "sort": 0,
+        "ownership": {
+          "default": 0
+        },
+        "flags": {},
+        "_stats": {
+          "systemId": null,
+          "systemVersion": null,
+          "coreVersion": null,
+          "createdTime": null,
+          "modifiedTime": null,
+          "lastModifiedBy": null
+        }
+      }
+    },
+    "exportSource": {
+      "world": "empyrium",
+      "system": "dnd5e",
+      "coreVersion": "10.291",
+      "systemVersion": "2.1.5"
+    }
+  },
+  "_stats": {
+    "systemId": "dnd5e",
+    "systemVersion": "2.1.5",
+    "coreVersion": "10.291",
+    "createdTime": 1680354899288,
+    "modifiedTime": 1680361795411,
+    "lastModifiedBy": "Gu1ieuDSuMNnDIjI"
+  }
+}
